@@ -272,7 +272,8 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                             mechName = ProtocolUtils.readString(receiveBuffer);
                         }
                         final String protocol = optionMap.get(RemotingOptions.SASL_PROTOCOL, RemotingOptions.DEFAULT_SASL_PROTOCOL);
-                        final Map<String, String> saslProperties = getSaslProperties(optionMap);
+                        final Map<String, Object> saslProperties = getSaslProperties(optionMap);
+
                         final SslChannel sslChannel = connection.getSslChannel();
                         final SSLSession sslSession = sslChannel == null ? null : sslChannel.getSslSession();
 
@@ -312,15 +313,16 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
             }
         }
 
-        private Map<String, String> getSaslProperties(final OptionMap optionMap) {
-            Map<String, String> saslProperties = null;
+        private Map<String, Object> getSaslProperties(final OptionMap optionMap) {
             final Sequence<Property> value = optionMap.get(Options.SASL_PROPERTIES);
+            Map<String, Object> saslProperties = new HashMap<>(value == null ? 2 : value.size() + 2);
             if (value != null) {
-                saslProperties = new HashMap<>(value.size());
                 for (Property property : value) {
-                    saslProperties.put(property.getKey(), (String) property.getValue());
+                    saslProperties.put(property.getKey(), property.getValue());
                 }
             }
+            saslProperties.put(WildFlySasl.GS2_INITIATOR_ADDRESS, connection.getPeerAddress().getAddress());
+            saslProperties.put(WildFlySasl.GS2_ACCEPTOR_ADDRESS, connection.getLocalAddress().getAddress());
             return saslProperties;
         }
 

@@ -19,6 +19,7 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
@@ -27,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -43,6 +45,7 @@ import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
 import org.wildfly.security.auth.principal.AnonymousPrincipal;
 import org.wildfly.security.sasl.WildFlySasl;
+import org.wildfly.security.sasl.util.PropertiesSaslClientFactory;
 import org.wildfly.security.sasl.util.ServerNameSaslClientFactory;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
@@ -406,8 +409,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
 
                         // OK now send our authentication request
                         final AuthenticationContextConfigurationClient configurationClient = AUTH_CONFIGURATION_CLIENT;
-                        UnaryOperator<SaslClientFactory> factoryOperator = factory -> new ServerNameSaslClientFactory(factory, remoteServerName);
-                        factoryOperator = and(ClientConnectionOpenListener.this.saslClientFactoryOperator, factoryOperator);
+                        UnaryOperator<SaslClientFactory> factoryOperator = ClientConnectionOpenListener.this.saslClientFactoryOperator;
+                        Map<String, InetAddress> props = new HashMap<>();
+                        props.put(WildFlySasl.GS2_INITIATOR_ADDRESS, connection.getLocalAddress().getAddress());
+                        props.put(WildFlySasl.GS2_ACCEPTOR_ADDRESS, connection.getPeerAddress().getAddress());
+                        factoryOperator = and(factory -> new PropertiesSaslClientFactory(factory, props), factoryOperator);
+                        factoryOperator = and(factory -> new ServerNameSaslClientFactory(factory, remoteServerName), factoryOperator);
                         final SaslClient saslClient;
                         final SslChannel sslChannel = connection.getSslChannel();
                         final SSLSession sslSession;
